@@ -733,6 +733,29 @@ class ToolchainExecTableTest {
     }
 
     @Test
+    fun `git's own shell commands run through the trampoline and what they source is left alone`() {
+        val gitCore = File(filesDir, "usr/lib/git-core").apply { mkdirs() }
+        File(gitCore, "git-submodule").writeText("#!/bin/sh\n. git-sh-setup\n")
+        File(gitCore, "git-sh-setup").writeText("# sourced, never exec'd\n")
+
+        regenerate()
+
+        val link = File(gitCore, "git-submodule")
+        assertTrue(Files.isSymbolicLink(link.toPath()), "git-submodule is still a script git cannot exec")
+        assertEquals(trampoline, Files.readSymbolicLink(link.toPath()).toString())
+        val kept = File(gitCore, "git-submodule.script")
+        assertEquals("#!/bin/sh\n. git-sh-setup\n", kept.readText(), "the shipped script was not kept")
+        assertTrue(
+            tableLines().contains("git-submodule\t/system/bin/sh\t${kept.absolutePath}"),
+            "no row runs the kept script through the shell:\n" + execTable.readText(),
+        )
+        assertFalse(
+            Files.isSymbolicLink(File(gitCore, "git-sh-setup").toPath()),
+            "a library the scripts source was replaced by a link to a binary",
+        )
+    }
+
+    @Test
     fun `a script an update wrote over the link replaces the kept copy`() {
         gitHelper("ssh-askpass.sh", "old\n")
         regenerate()

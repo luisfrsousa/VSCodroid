@@ -290,6 +290,30 @@ class ToolchainManager(private val context: Context) {
             "git-editor.sh", "git-editor-empty.sh",
         )
 
+        /** Where git keeps the commands it runs by name, under filesDir. */
+        private const val GIT_CORE_DIR = "usr/lib/git-core"
+
+        /**
+         * The git commands that are shell scripts git EXECS out of [GIT_CORE_DIR].
+         *
+         * Each is under filesDir, so the kernel refused it and `git submodule`
+         * ended in "cannot exec 'git-submodule': Permission denied": on a clone
+         * from Source Control, which asks for submodules, that was the last line
+         * of an otherwise complete clone. They are served the way the git
+         * extension's helpers are, by [addGitHelperRows].
+         *
+         * Only what git execs belongs here. `git-sh-setup`, `git-sh-i18n` and
+         * `git-mergetool--lib` are SOURCED by these scripts, which is a read and
+         * already works; a link in their place would hand the shell a binary to
+         * source. A name the shipped tree does not hold is skipped.
+         */
+        private val GIT_CORE_SCRIPTS = listOf(
+            "git-submodule",
+            "git-mergetool", "git-difftool--helper",
+            "git-merge-octopus", "git-merge-one-file", "git-merge-resolve",
+            "git-request-pull", "git-web--browse",
+        )
+
         /** Appended to a git helper's name for the shipped script its link replaced. */
         private const val GIT_HELPER_SUFFIX = ".script"
 
@@ -3577,7 +3601,8 @@ class ToolchainManager(private val context: Context) {
         addNpmRows(rows)
         addCodexRows(rows, installed, stateKnown = readable != null)
         val setAside = addGitHelperRows(rows, GIT_EXTENSION_DIST, GIT_HELPER_SCRIPTS) +
-            addGitHelperRows(rows, REMOTE_CLI_DIR, listOf(REMOTE_CLI))
+            addGitHelperRows(rows, REMOTE_CLI_DIR, listOf(REMOTE_CLI)) +
+            addGitHelperRows(rows, GIT_CORE_DIR, GIT_CORE_SCRIPTS)
         linkServerNode()
         val binDir = File(context.filesDir, "usr/bin")
         addInstalledScriptRows(rows, binDir, File(binDir, "python3").absolutePath, "python", "pip")
