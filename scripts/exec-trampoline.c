@@ -89,6 +89,16 @@
 // process trees.
 static const char *kLoader = "/system/bin/linker64";
 
+// Where a target needs no loader. A program on the system partition is one the
+// app may execve as it stands, and the loader has to open its payload for
+// reading, which a device may refuse there while still allowing the execve:
+// on a Galaxy Tab S9 Ultra the git helper rows, whose target is /system/bin/sh,
+// ended in `error: unable to open file "/system/bin/sh"` printed by linker64,
+// and every credential prompt git raised failed with it. So a target under
+// this directory is exec'd directly, and the loader stays for everything the
+// kernel would refuse.
+static const char *kSystemDir = "/system/";
+
 // Two absolute paths (a target and an optional script argument), their tab, a
 // command name, and slack. A line longer than this is skipped rather than
 // truncated and used: a truncated path is a command that fails naming a path the
@@ -269,20 +279,23 @@ int main(int argc, char **argv) {
         return EXIT_NOT_FOUND;
     }
 
-    // loader, target, the row's arguments, argv[1..], NULL.
+    // loader (unless the target is exec'd directly), target, the row's
+    // arguments, argv[1..], NULL.
     char **next = calloc((size_t)argc + MAX_ROW_ARGS + 3, sizeof(char *));
     if (!next) {
         fprintf(stderr, "vscodroid: %s: out of memory\n", name);
         return EXIT_CANNOT_EXEC;
     }
     int n = 0;
-    next[n++] = (char *)kLoader;
+    const int direct = strncmp(target, kSystemDir, strlen(kSystemDir)) == 0;
+    const char *program = direct ? target : kLoader;
+    if (!direct) next[n++] = (char *)kLoader;
     next[n++] = target;
     for (int i = 0; i < nargs; i++) next[n++] = args[i];
     for (int i = 1; i < argc; i++) next[n++] = argv[i];
     next[n] = NULL;
 
-    execv(kLoader, next);
-    fprintf(stderr, "vscodroid: %s: cannot run %s: %s\n", name, kLoader, strerror(errno));
+    execv(program, next);
+    fprintf(stderr, "vscodroid: %s: cannot run %s: %s\n", name, program, strerror(errno));
     return EXIT_CANNOT_EXEC;
 }
