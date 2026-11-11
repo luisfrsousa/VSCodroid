@@ -22,6 +22,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.DocumentsContract
+import android.provider.Settings
 import android.text.util.Linkify
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -667,6 +668,7 @@ class MainActivity : AppCompatActivity() {
         // First, because everything below it assumes an extracted tree. See
         // handOffToSetup for what reaching this activity without one costs.
         if (handOffToSetup()) return
+        requestAllFilesAccessOnce()
         // One repair from SplashActivity's launch block, and only this one,
         // because it is the one whose absence is fatal rather than degrading.
         // The machine settings name usr/lib/libtermux-exec.so in LD_PRELOAD for
@@ -830,6 +832,37 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         receiveCallbackIntent(intent)
+    }
+
+    /**
+     * Opens Android's "All files access" screen for this app, once.
+     *
+     * This fork declares MANAGE_EXTERNAL_STORAGE so that a folder on shared
+     * storage can be opened and edited in place. The permission is not a
+     * dialog: the user turns it on in Settings, so the first launch that finds
+     * it off takes them there. Only once, whatever they answer, because the
+     * switch stays reachable under Settings > Apps > Special access and a
+     * prompt on every launch would punish declining it.
+     */
+    private fun requestAllFilesAccessOnce() {
+        if (android.os.Environment.isExternalStorageManager()) return
+        if (workspacePrefs.getBoolean(ALL_FILES_ACCESS_ASKED, false)) return
+        workspacePrefs.edit { putBoolean(ALL_FILES_ACCESS_ASKED, true) }
+        try {
+            startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                    Uri.fromParts("package", packageName, null),
+                )
+            )
+        } catch (e: ActivityNotFoundException) {
+            // Some vendor builds carry only the list of every app.
+            try {
+                startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+            } catch (e2: ActivityNotFoundException) {
+                Logger.w(tag, "No All files access screen on this device", e2)
+            }
+        }
     }
 
     override fun onResume() {
@@ -7151,6 +7184,7 @@ class MainActivity : AppCompatActivity() {
 
         /** The preferences file `PortFinder` and `SplashActivity` already use. */
         private const val WORKSPACE_PREFS = "vscodroid"
+        private const val ALL_FILES_ACCESS_ASKED = "all_files_access_asked"
 
         /** The workspace to reopen when there is no page left to read one from. */
         private const val KEY_LAST_FOLDER = "last_workspace_folder"

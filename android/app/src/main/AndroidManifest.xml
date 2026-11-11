@@ -15,6 +15,16 @@
     <!-- Notifications: server status in notification shade -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- All files access, for this fork only: lets File > Open Folder work in
+         place on shared storage (a git repository under Documents, say), with
+         no device-folder copy in between. Not for a Play build, which would
+         need Google's declaration for it. Granted by the user in Settings;
+         MainActivity.requestAllFilesAccessOnce opens that screen on the first
+         launch. -->
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
     <!-- largeHeap raises the ART heap CAP for this process and nothing else:
          it does not reserve memory and no Kotlin here reads it. On an API 33
          arm64 device with 4 GB of RAM the cap moves from

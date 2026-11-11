@@ -265,6 +265,7 @@ Native responses on the workbench origin require `EditorGateway` to own the clie
 | `FOREGROUND_SERVICE`             | Keep Node.js alive in background                | Install time   |
 | `FOREGROUND_SERVICE_SPECIAL_USE` | Dev server foreground service type              | Install time   |
 | `POST_NOTIFICATIONS`             | Foreground Service notification (API 33+)       | Runtime        |
+| `MANAGE_EXTERNAL_STORAGE`        | This fork only: open folders on shared storage in place | User, in Settings |
 
 Those four are what **this app's own** `AndroidManifest.xml` declares. The **installed** app holds
 more, because the manifest merger adds permissions from libraries, and a Play Store listing shows
@@ -285,7 +286,6 @@ until 2026-08-20; the rest have never been in scope.
 
 | Permission                                              | Why not                                                                                                                                                                                                                                                          |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MANAGE_EXTERNAL_STORAGE`                               | It would pull in a Play declaration process the app has no need of. Folders outside app storage are reached through SAF, which is a per-folder user grant rather than a permission, and which has the sync engine that makes write-back work                       |
 | `WAKE_LOCK`                                             | A consequence worth knowing: a foreground service raises process priority but does not keep the CPU awake, so a long build or test run in the terminal can stall when the screen goes off. Holding a wake lock is a product decision nobody has made yet           |
 | `READ_EXTERNAL_STORAGE`                                 | SAF is used instead, which grants one folder at a time rather than the whole of shared storage                                                                                                                                                                    |
 | `REQUEST_INSTALL_PACKAGES`                              | Not needed. The app installs no APKs; toolchains land in `filesDir` as plain files                                                                                                                                                                                |
